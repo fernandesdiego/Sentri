@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+    <File Path="Project.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Sentri.Api/Sentri.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sentri.Tests/Sentri.Tests.csproj" />
+  </Folder>
+</Solution>
