@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sentri.Api.Infrastructure;
 
 #nullable disable
 
-namespace Sentri.Api.Migrations
+namespace Sentri.Api.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260402184218_initial")]
+    partial class initial
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,12 +37,15 @@ namespace Sentri.Api.Migrations
                     b.Property<DateTimeOffset>("Date")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("ProviderId")
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SnapshotId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderId");
+                    b.HasIndex("SnapshotId");
 
                     b.ToTable("Expenses");
                 });
@@ -49,10 +55,6 @@ namespace Sentri.Api.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<decimal>("CurrentSpend")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("MonthlyBudget")
                         .HasPrecision(18, 2)
@@ -77,6 +79,42 @@ namespace Sentri.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Providers", (string)null);
+                });
+
+            modelBuilder.Entity("Sentri.Api.Domain.ProviderMonthlySnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AlertSent")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalSpend")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("Snapshots", (string)null);
                 });
 
             modelBuilder.Entity("Sentri.Api.Domain.User", b =>
@@ -109,8 +147,28 @@ namespace Sentri.Api.Migrations
 
             modelBuilder.Entity("Sentri.Api.Domain.Expense", b =>
                 {
+                    b.HasOne("Sentri.Api.Domain.ProviderMonthlySnapshot", null)
+                        .WithMany()
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentri.Api.Domain.Provider", b =>
+                {
+                    b.HasOne("Sentri.Api.Domain.User", "User")
+                        .WithMany("Providers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sentri.Api.Domain.ProviderMonthlySnapshot", b =>
+                {
                     b.HasOne("Sentri.Api.Domain.Provider", null)
-                        .WithMany("Expenses")
+                        .WithMany("Snapshots")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -118,16 +176,7 @@ namespace Sentri.Api.Migrations
 
             modelBuilder.Entity("Sentri.Api.Domain.Provider", b =>
                 {
-                    b.HasOne("Sentri.Api.Domain.User", null)
-                        .WithMany("Providers")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Sentri.Api.Domain.Provider", b =>
-                {
-                    b.Navigation("Expenses");
+                    b.Navigation("Snapshots");
                 });
 
             modelBuilder.Entity("Sentri.Api.Domain.User", b =>
