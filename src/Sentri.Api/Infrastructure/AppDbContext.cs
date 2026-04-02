@@ -7,6 +7,7 @@ namespace Sentri.Api.Infrastructure;
 public class AppDbContext(DbContextOptions<AppDbContext> options, IPublisher publisher) : DbContext(options)
 {
     public DbSet<Provider> Providers => Set<Provider>();
+    public DbSet<ProviderMonthlySnapshot> Snapshots => Set<ProviderMonthlySnapshot>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<User> Users => Set<User>();
 
@@ -17,7 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IPublisher pub
             .IsUnique();
 
         modelBuilder.Entity<Provider>()
-            .Metadata.FindNavigation(nameof(Provider.Expenses))!
+            .Metadata.FindNavigation(nameof(Provider.Snapshots))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -28,7 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IPublisher pub
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var domainEntities = ChangeTracker
-            .Entries<Provider>()
+            .Entries<Entity>()
             .Where(x => x.Entity.DomainEvents.Any())
             .ToList();
 

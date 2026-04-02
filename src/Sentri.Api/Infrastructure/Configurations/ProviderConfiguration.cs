@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Sentri.Api.Domain;
 
@@ -22,8 +22,5 @@ public class ProviderConfiguration : IEntityTypeConfiguration<Provider>
         builder.Property(p => p.WarningThreshold)
             .HasDefaultValue(0.8m)
             .HasPrecision(4, 2);
-
-        builder.Property(p => p.CurrentSpend)
-            .HasPrecision(18, 2);
     }
 }

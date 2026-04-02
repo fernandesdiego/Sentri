@@ -19,6 +19,9 @@ public class GetProvidersHandler(AppDbContext context)
             return [];
         }
 
+        var currentYear = DateTimeOffset.UtcNow.Year;
+        var currentMonth = DateTimeOffset.UtcNow.Month;
+
         return await context.Providers
             .Where(p => p.UserId == userId)
             .Select(p => new ProviderSummaryResult(
@@ -26,7 +29,7 @@ public class GetProvidersHandler(AppDbContext context)
                 p.Name, 
                 p.MonthlyBudget, 
                 p.WarningThreshold, 
-                p.CurrentSpend))
+                p.Snapshots.Where(s => s.Year == currentYear && s.Month == currentMonth).Select(s => (decimal?)s.TotalSpend).FirstOrDefault() ?? 0m))
             .ToListAsync(ct);
     }
 }

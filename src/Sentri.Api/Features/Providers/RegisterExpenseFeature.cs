@@ -10,7 +10,7 @@ using Sentri.Api.Infrastructure;
 
 namespace Sentri.Api.Features.Providers.RegisterExpense;
 
-public record RegisterExpenseRequest(decimal Amount, Guid ProviderId);
+public record RegisterExpenseRequest(decimal Amount, Guid ProviderId, string? Notes = null);
 
 public class RegisterExpenseHandler(AppDbContext context)
 {
@@ -22,7 +22,9 @@ public class RegisterExpenseHandler(AppDbContext context)
             return Result.Fail("User is not authenticated.");
         }
 
-        var provider = await context.Providers.FirstOrDefaultAsync(p => p.Id == request.ProviderId && p.UserId == userId, cancellationToken: ct);
+        var provider = await context.Providers
+            .Include(p => p.Snapshots)
+            .FirstOrDefaultAsync(p => p.Id == request.ProviderId && p.UserId == userId, cancellationToken: ct);
 
         if (provider is null)
         {
@@ -31,12 +33,24 @@ public class RegisterExpenseHandler(AppDbContext context)
 
         try
         {
-            var expense = provider.AddExpense(request.Amount);
+            var expense = provider.AddExpense(request.Amount, request.Notes);
+
+            // I hate this, if a new snapshot was just created for this month, EF won't auto-detect it as Added
+            // because it lives in a private backing field?. We have to explicitly track it here.
+            foreach (var s in provider.Snapshots)
+            {
+                if (context.Entry(s).State == EntityState.Detached)
+                    context.Snapshots.Add(s);
+            }
+
             context.Expenses.Add(expense);
 
             await context.SaveChangesAsync(ct);
 
-            return Result.Ok(provider.HasReachedThreshold());
+            var snapshot = provider.Snapshots.First(s => s.Id == expense.SnapshotId);
+            var thresholdReached = snapshot.TotalSpend >= (provider.MonthlyBudget * provider.WarningThreshold);
+
+            return Result.Ok(thresholdReached);
         }
         catch (ArgumentException ex)
         {

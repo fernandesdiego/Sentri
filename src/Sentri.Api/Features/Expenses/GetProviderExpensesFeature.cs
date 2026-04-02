@@ -7,7 +7,7 @@ using Sentri.Api.Infrastructure;
 
 namespace Sentri.Api.Features.Expenses.GetProviderExpenses;
 
-public record ExpenseResult(Guid Id, decimal Amount, DateTimeOffset Date);
+public record ExpenseResult(Guid Id, decimal Amount, DateTimeOffset Date, string? Notes);
 
 public class GetProviderExpensesHandler(AppDbContext context)
 {
@@ -27,9 +27,13 @@ public class GetProviderExpensesHandler(AppDbContext context)
         }
 
         var expenses = await context.Expenses
-            .Where(e => e.ProviderId == providerId)
-            .OrderByDescending(e => e.Date)
-            .Select(e => new ExpenseResult(e.Id, e.Amount, e.Date))
+            .Join(context.Snapshots, 
+                  e => e.SnapshotId, 
+                  s => s.Id, 
+                  (e, s) => new { Expense = e, Snapshot = s })
+            .Where(x => x.Snapshot.ProviderId == providerId)
+            .OrderByDescending(x => x.Expense.Date)
+            .Select(x => new ExpenseResult(x.Expense.Id, x.Expense.Amount, x.Expense.Date, x.Expense.Notes))
             .ToListAsync(ct);
 
         return Result.Ok(expenses);

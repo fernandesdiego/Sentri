@@ -19,6 +19,9 @@ public class GetProviderByIdHandler(AppDbContext context)
             return Result.Fail("User is not authenticated.");
         }
 
+        var currentYear = DateTimeOffset.UtcNow.Year;
+        var currentMonth = DateTimeOffset.UtcNow.Month;
+
         var provider = await context.Providers
             .Where(p => p.Id == id && p.UserId == userId)
             .Select(p => new ProviderDetailsResult(
@@ -26,7 +29,7 @@ public class GetProviderByIdHandler(AppDbContext context)
                 p.Name, 
                 p.MonthlyBudget, 
                 p.WarningThreshold, 
-                p.CurrentSpend))
+                p.Snapshots.Where(s => s.Year == currentYear && s.Month == currentMonth).Select(s => (decimal?)s.TotalSpend).FirstOrDefault() ?? 0m))
             .FirstOrDefaultAsync(ct);
 
         if (provider is null)
