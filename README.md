@@ -6,7 +6,7 @@
 Know when you're over budget.
 
 [![.NET](https://github.com/fernandesdiego/Sentri/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/fernandesdiego/Sentri/actions/workflows/build-and-test.yml)
-[![codecov](https://codecov.io/gh/fernandesdiego/Sentri/branch/main/graph/badge.svg)](https://codecov.io/gh/fernandesdiego/Sentri)
+[![codecov](https://codecov.io/gh/fernandesdiego/Sentri/branch/master/graph/badge.svg?token=141I5WKW5R)](https://codecov.io/gh/fernandesdiego/Sentri)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
