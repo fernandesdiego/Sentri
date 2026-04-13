@@ -142,6 +142,9 @@ When an expense pushes a provider's monthly spend past its `WarningThreshold` (a
 
 **Example:** A provider with a $100 budget and a `0.8` threshold will trigger an alert the moment cumulative spend in the current month exceeds $80.
 
+<img width="756" height="764" alt="image" src="https://github.com/user-attachments/assets/0a1df9ac-78fe-4aec-b849-3b726e8cd71c" />
+
+
 ---
 
 ## 🤝 Contributing
