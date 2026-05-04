@@ -1,20 +1,21 @@
-using Microsoft.EntityFrameworkCore;
-using Sentri.Api.Features.Providers.CreateProvider;
-using Sentri.Api.Features.Providers.RegisterExpense;
-using Sentri.Api.Features.Providers.GetProviders;
-using Sentri.Api.Features.Providers.GetProviderById;
-using Sentri.Api.Features.Expenses.GetProviderExpenses;
-using Sentri.Api.Domain;
-using Sentri.Api.Domain.Events;
-using Sentri.Api.Features.Notifications;
-using Sentri.Api.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
+using Sentri.Api.Domain;
 using Sentri.Api.Features.Auth;
+using Sentri.Api.Features.Expenses.GetProviderExpenses;
+using Sentri.Api.Features.Notifications;
+using Sentri.Api.Features.Providers.CreateProvider;
+using Sentri.Api.Features.Providers.GetProviderById;
+using Sentri.Api.Features.Providers.GetProviders;
+using Sentri.Api.Features.Providers.RegisterExpense;
+using Sentri.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string AuthScheme = AuthConstants.AuthScheme;
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -22,51 +23,117 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddOpenApi();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition(AuthConstants.ApiKeyScheme, new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description = $"API key authentication using the '{AuthConstants.ApiKeyHeaderPrefix} ' prefix"
+    });
+});
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("PanelCors", policy =>
     {
-        policy.AllowAnyOrigin()
+        if (allowedOrigins.Length == 0)
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                .AllowCredentials()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+
+            return;
+        }
+
+        policy.WithOrigins(allowedOrigins)
+            .AllowCredentials()
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
 
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+builder.Services.AddAuthentication(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        options.DefaultScheme = AuthScheme;
+        options.DefaultAuthenticateScheme = AuthScheme;
+        options.DefaultChallengeScheme = AuthScheme;
+    })
+    .AddPolicyScheme(AuthScheme, "Sentri authentication", options =>
+    {
+        options.ForwardDefaultSelector = context =>
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(key)
+            var authorizationHeader = context.Request.Headers.Authorization.ToString();
+
+            if (!string.IsNullOrWhiteSpace(authorizationHeader) &&
+                authorizationHeader.StartsWith($"{AuthConstants.ApiKeyHeaderPrefix} ", StringComparison.OrdinalIgnoreCase))
+            {
+                return AuthConstants.ApiKeyScheme;
+            }
+
+            return AuthConstants.PanelCookieScheme;
         };
+    })
+    .AddCookie(AuthConstants.PanelCookieScheme, options =>
+    {
+        options.Cookie.Name = AuthConstants.PanelCookieName;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+        };
+    })
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(AuthConstants.ApiKeyScheme, _ => { });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthConstants.BusinessPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
     });
 
-builder.Services.AddAuthorization();
+    options.AddPolicy(AuthConstants.PanelPolicy, policy =>
+    {
+        policy.AddAuthenticationSchemes(AuthConstants.PanelCookieScheme);
+        policy.RequireAuthenticatedUser();
+    });
+});
 
 builder.Services.AddScoped<CreateProviderHandler>();
 builder.Services.AddScoped<RegisterExpenseHandler>();
 builder.Services.AddScoped<GetProvidersHandler>();
 builder.Services.AddScoped<GetProviderByIdHandler>();
 builder.Services.AddScoped<GetProviderExpensesHandler>();
+builder.Services.AddScoped<CreateApiKeyHandler>();
+builder.Services.AddScoped<ListApiKeysHandler>();
+builder.Services.AddScoped<RevokeApiKeyHandler>();
 
-builder.Services.AddMediatR(cfg => 
+builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
 });
 
 builder.Services.AddHttpClient<IEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<ApiKeyService>();
 builder.Services.AddScoped<RegisterUserHandler>();
 builder.Services.AddScoped<LoginUserHandler>();
 
@@ -79,7 +146,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+app.UseHttpsRedirection();
+app.UseCors("PanelCors");
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -90,7 +158,8 @@ app.MapGetProviderById();
 app.MapGetProviderExpenses();
 app.MapRegisterUser();
 app.MapLoginUser();
-
-app.UseHttpsRedirection();
+app.MapCreateApiKey();
+app.MapListApiKeys();
+app.MapRevokeApiKey();
 
 app.Run();
