@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IPublisher pub
     public DbSet<ProviderMonthlySnapshot> Snapshots => Set<ProviderMonthlySnapshot>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
