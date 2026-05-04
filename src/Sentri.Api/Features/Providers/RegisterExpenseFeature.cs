@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
+using Sentri.Api.Features.Auth;
 using Microsoft.EntityFrameworkCore;
 using Sentri.Api.Domain;
 using Sentri.Api.Infrastructure;
@@ -77,7 +78,7 @@ public static class RegisterExpenseEndpoint
         })
         .WithName("RegisterExpense")
         .WithTags("Expenses")
-        .RequireAuthorization()
+        .RequireAuthorization(AuthConstants.BusinessPolicy)
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

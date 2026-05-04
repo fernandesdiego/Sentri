@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Sentri.Api.Features.Auth;
 using Sentri.Api.Infrastructure;
 
 namespace Sentri.Api.Features.Expenses.GetProviderExpenses;
@@ -27,9 +28,9 @@ public class GetProviderExpensesHandler(AppDbContext context)
         }
 
         var expenses = await context.Expenses
-            .Join(context.Snapshots, 
-                  e => e.SnapshotId, 
-                  s => s.Id, 
+            .Join(context.Snapshots,
+                  e => e.SnapshotId,
+                  s => s.Id,
                   (e, s) => new { Expense = e, Snapshot = s })
             .Where(x => x.Snapshot.ProviderId == providerId)
             .OrderByDescending(x => x.Expense.Date)
@@ -58,7 +59,7 @@ public static class GetProviderExpensesEndpoint
         })
         .WithName("GetProviderExpenses")
         .WithTags("Expenses")
-        .RequireAuthorization()
+        .RequireAuthorization(AuthConstants.BusinessPolicy)
         .Produces<List<ExpenseResult>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status401Unauthorized)

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Sentri.Api.Features.Auth;
 using Sentri.Api.Infrastructure;
 
 namespace Sentri.Api.Features.Providers.GetProviderById;
@@ -25,10 +26,10 @@ public class GetProviderByIdHandler(AppDbContext context)
         var provider = await context.Providers
             .Where(p => p.Id == id && p.UserId == userId)
             .Select(p => new ProviderDetailsResult(
-                p.Id, 
-                p.Name, 
-                p.MonthlyBudget, 
-                p.WarningThreshold, 
+                p.Id,
+                p.Name,
+                p.MonthlyBudget,
+                p.WarningThreshold,
                 p.Snapshots.Where(s => s.Year == currentYear && s.Month == currentMonth).Select(s => (decimal?)s.TotalSpend).FirstOrDefault() ?? 0m))
             .FirstOrDefaultAsync(ct);
 
@@ -59,7 +60,7 @@ public static class GetProviderByIdEndpoint
         })
         .WithName("GetProviderById")
         .WithTags("Providers")
-        .RequireAuthorization()
+        .RequireAuthorization(AuthConstants.BusinessPolicy)
         .Produces<ProviderDetailsResult>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status401Unauthorized)

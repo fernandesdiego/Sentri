@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Sentri.Api.Features.Auth;
 using Sentri.Api.Infrastructure;
 using Sentri.Api.Domain;
 
@@ -25,10 +26,10 @@ public class GetProvidersHandler(AppDbContext context)
         return await context.Providers
             .Where(p => p.UserId == userId)
             .Select(p => new ProviderSummaryResult(
-                p.Id, 
-                p.Name, 
-                p.MonthlyBudget, 
-                p.WarningThreshold, 
+                p.Id,
+                p.Name,
+                p.MonthlyBudget,
+                p.WarningThreshold,
                 p.Snapshots.Where(s => s.Year == currentYear && s.Month == currentMonth).Select(s => (decimal?)s.TotalSpend).FirstOrDefault() ?? 0m))
             .ToListAsync(ct);
     }
@@ -48,7 +49,7 @@ public static class GetProvidersEndpoint
         })
         .WithName("GetProviders")
         .WithTags("Providers")
-        .RequireAuthorization()
+        .RequireAuthorization(AuthConstants.BusinessPolicy)
         .Produces<List<ProviderSummaryResult>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .WithDescription("Retrieves all providers for the logged-in user.");

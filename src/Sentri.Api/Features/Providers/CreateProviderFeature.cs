@@ -2,6 +2,7 @@ using FluentResults;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Sentri.Api.Features.Auth;
 using Sentri.Api.Domain;
 using Sentri.Api.Infrastructure;
 
@@ -57,7 +58,7 @@ public static class CreateProviderEndpoint
         })
         .WithName("CreateProvider")
         .WithTags("Providers")
-        .RequireAuthorization()
+        .RequireAuthorization(AuthConstants.BusinessPolicy)
         .Produces(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
