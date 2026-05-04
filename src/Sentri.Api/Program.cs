@@ -29,8 +29,12 @@ builder.Services.AddSwaggerGen(options =>
     {
         Type = SecuritySchemeType.ApiKey,
         In = ParameterLocation.Header,
-        Name = "Authorization",
-        Description = $"API key authentication using the '{AuthConstants.ApiKeyHeaderPrefix} ' prefix"
+        Name = AuthConstants.ApiKeyHeaderName,
+        Description = "API key authentication using the X-API-KEY header."
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference(AuthConstants.ApiKeyScheme, document)] = []
     });
 });
 
@@ -66,10 +70,7 @@ builder.Services.AddAuthentication(options =>
     {
         options.ForwardDefaultSelector = context =>
         {
-            var authorizationHeader = context.Request.Headers.Authorization.ToString();
-
-            if (!string.IsNullOrWhiteSpace(authorizationHeader) &&
-                authorizationHeader.StartsWith($"{AuthConstants.ApiKeyHeaderPrefix} ", StringComparison.OrdinalIgnoreCase))
+            if (context.Request.Headers.ContainsKey(AuthConstants.ApiKeyHeaderName))
             {
                 return AuthConstants.ApiKeyScheme;
             }

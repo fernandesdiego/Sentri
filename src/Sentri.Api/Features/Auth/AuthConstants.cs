@@ -8,6 +8,6 @@ public static class AuthConstants
     public const string ApiKeyScheme = "SentriApiKey";
     public const string PanelCookieScheme = "SentriPanelCookie";
     public const string PanelCookieName = ".Sentri.Panel";
-    public const string ApiKeyHeaderPrefix = "ApiKey";
+    public const string ApiKeyHeaderName = "X-API-KEY";
     public const string ApiKeyPrefix = "sk";
 }

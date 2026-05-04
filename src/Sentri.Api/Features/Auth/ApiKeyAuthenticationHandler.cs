@@ -17,15 +17,12 @@ public class ApiKeyAuthenticationHandler(
 {
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var authorizationHeader = Request.Headers.Authorization.ToString();
-
-        if (string.IsNullOrWhiteSpace(authorizationHeader) ||
-            !authorizationHeader.StartsWith($"{AuthConstants.ApiKeyHeaderPrefix} ", StringComparison.OrdinalIgnoreCase))
+        if (!Request.Headers.TryGetValue(AuthConstants.ApiKeyHeaderName, out var extractedApiKey))
         {
             return AuthenticateResult.NoResult();
         }
 
-        var rawKey = authorizationHeader[(AuthConstants.ApiKeyHeaderPrefix.Length + 1)..].Trim();
+        var rawKey = extractedApiKey.ToString().Trim();
 
         if (!apiKeyService.TryParseRawKey(rawKey, out var keyId, out var secret))
         {
